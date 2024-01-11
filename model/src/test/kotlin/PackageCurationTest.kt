@@ -28,6 +28,8 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 
+import org.ossreviewtoolkit.utils.ort.ProcessedDeclaredLicense
+import org.ossreviewtoolkit.utils.spdx.SpdxExpression
 import org.ossreviewtoolkit.utils.spdx.toSpdx
 
 class PackageCurationTest : WordSpec({
@@ -343,6 +345,38 @@ class PackageCurationTest : WordSpec({
             result1.metadata.labels shouldBe mapOf("k1" to "v1")
             result2.metadata.labels shouldBe mapOf("k1" to "v1", "k2" to "v2")
             result3.metadata.labels shouldBe mapOf("k1" to "v1", "k2" to "v2-updated")
+        }
+    }
+
+    "Applying curation to compound OR license expression" should {
+        "preserve OR operators but incorrectly converts them to AND" {
+            // Create a package that originally had a compound OR license expression
+            // (as would come from the GradleInspector (see GradleDependencyHandler)
+            val pkg = Package.EMPTY.copy(
+                declaredLicenses = setOf("Apache-2.0", "MIT"),
+                declaredLicensesProcessed = ProcessedDeclaredLicense(
+                    spdxExpression = "Apache-2.0 OR MIT".toSpdx(),
+                    mapped = emptyMap<String, SpdxExpression>(),
+                    unmapped = emptySet<String>()
+                )
+            )
+
+            val curation = PackageCuration(
+                id = pkg.id,
+                data = PackageCurationData(
+                    description = "Updated description"
+                )
+            )
+
+            val result = curation.apply(pkg.toCuratedPackage())
+
+            // This test demonstrates the bug: original OR expression gets converted to AND
+            // Before curation: "Apache-2.0 OR MIT"
+            // After curation: "Apache-2.0 AND MIT" (incorrect!)
+            result.metadata.declaredLicensesProcessed.spdxExpression shouldBe "Apache-2.0 OR MIT".toSpdx()
+            
+            // To show what the original was:
+            pkg.declaredLicensesProcessed.spdxExpression shouldBe "Apache-2.0 OR MIT".toSpdx()
         }
     }
 
