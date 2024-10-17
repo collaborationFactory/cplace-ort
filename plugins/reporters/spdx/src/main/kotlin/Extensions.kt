@@ -131,8 +131,8 @@ private fun Package.toSpdxExternalReferences(): List<SpdxExternalReference> {
  */
 internal enum class SpdxPackageType(val infix: String, val suffix: String = "") {
     PROJECT("Project"),
-    BINARY_PACKAGE("Package"),
-    SOURCE_PACKAGE("Package", "source-artifact"),
+    BINARY_PACKAGE("Package", "binary"),
+    SOURCE_PACKAGE("Package", "source"),
     VCS_PACKAGE("Package", "vcs")
 }
 
