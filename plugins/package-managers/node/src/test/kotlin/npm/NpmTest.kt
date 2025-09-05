@@ -118,5 +118,32 @@ class NpmTest : WordSpec({
                     "with --force to overwrite files recklessly."
             )
         }
+
+        "handle projects with optional platform dependencies" {
+            val workingDir = tempdir()
+            val definitionFileSrc = File("src/test/assets/test-package-with-optional-deps.json")
+            val definitionFile = workingDir.resolve("package.json")
+            definitionFileSrc.copyTo(definitionFile)
+
+            val npm = NpmFactory.create()
+            
+            // This should not throw any exceptions, regardless of NPM version
+            val results = npm.resolveDependencies(
+                workingDir,
+                definitionFile, 
+                Excludes.EMPTY,
+                AnalyzerConfiguration(allowDynamicVersions = true),
+                emptyMap()
+            )
+
+            // Verify analysis completed
+            results shouldHaveSize 1
+            
+            // Project should be parsed successfully
+            results[0].project.id.name shouldBe "bonjour"
+            
+            // May have issues, but should not crash
+            // (Optional dependencies might cause warnings/errors but not failures)
+        }
     }
 })
