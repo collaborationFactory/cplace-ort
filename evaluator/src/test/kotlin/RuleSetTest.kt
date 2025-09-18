@@ -161,7 +161,7 @@ class RuleSetTest : WordSpec({
 
                     licenseRule("test", LicenseView.CONCLUDED_OR_DECLARED_AND_DETECTED) {
                         require {
-                            -isExcluded()
+                            +isEffective()
                             +containsLicense("GPL-2.0-only".toSpdx())
                         }
 
@@ -295,3 +295,23 @@ private fun PackageRule.LicenseRule.containsLicense(expression: SpdxExpression) 
 
         override fun matches() = license == expression
     }
+
+fun PackageRule.LicenseRule.isEffective(): RuleMatcher {
+    return object : RuleMatcher {
+        override val description = "isEffective()"
+
+        override fun matches(): Boolean {
+            // Get the properly filtered effective license (exclude first, then apply choices)
+            val effectiveLicense = ruleSet.licenseInfoResolver.resolveLicenseInfo(pkg().metadata.id)
+                .filterExcluded()  // Filter excluded BEFORE applying choices
+                .effectiveLicense(
+                    LicenseView.CONCLUDED_OR_DECLARED_AND_DETECTED,
+                    ruleSet.ortResult.getPackageLicenseChoices(pkg().metadata.id),
+                    ruleSet.ortResult.getRepositoryLicenseChoices()
+                )
+
+            // Check if this specific license is in the effective license
+            return effectiveLicense?.decompose()?.contains(resolvedLicense.license) == true
+        }
+    }
+}
