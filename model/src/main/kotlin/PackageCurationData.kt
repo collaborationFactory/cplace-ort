@@ -24,8 +24,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder
 
 import org.ossreviewtoolkit.utils.common.zip
 import org.ossreviewtoolkit.utils.ort.DeclaredLicenseProcessor
+import org.ossreviewtoolkit.utils.spdx.SpdxCompoundExpression
 import org.ossreviewtoolkit.utils.spdx.SpdxExpression
 import org.ossreviewtoolkit.utils.spdx.SpdxExpression.Strictness.ALLOW_LICENSEREF_EXCEPTIONS
+import org.ossreviewtoolkit.utils.spdx.SpdxOperator
 import org.ossreviewtoolkit.utils.spdx.toExpression
 
 /**
@@ -145,9 +147,17 @@ data class PackageCurationData(
         } ?: base.vcsProcessed
 
         val declaredLicenseMapping = basePackage.getDeclaredLicenseMapping() + declaredLicenseMapping
+
+        // Extract the operator from existing processed licenses to preserve OR/AND relationships
+        val operator = when (val existing = base.declaredLicensesProcessed.spdxExpression) {
+            is SpdxCompoundExpression -> existing.operator
+            else -> SpdxOperator.AND
+        }
+
         val declaredLicensesProcessed = DeclaredLicenseProcessor.process(
             base.declaredLicenses,
-            declaredLicenseMapping
+            declaredLicenseMapping,
+            operator
         )
 
         val pkg = Package(
